@@ -1,7 +1,7 @@
 {
   "name": "opportunities-api",
   "version": "1.0.0",
-  "description": "Aviation opportunities feed proxy",
+  "description": "Aviation opportunities/news proxy",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
