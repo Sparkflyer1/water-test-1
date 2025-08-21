@@ -1,43 +1,36 @@
 const express = require("express");
 const cors = require("cors");
+const Parser = require("rss-parser");
 
 const app = express();
 app.use(cors());
 
-// Temporary demo data (replace later with live feeds)
-const opportunities = [
-  {
-    title: "Air Cargo Charter for Relief Supplies",
-    buyer: "World Food Programme",
-    disaster_type: "Flood",
-    region: "Mozambique",
-    deadline: "2025-09-10",
-    link: "https://www.ungm.org/Notice/12345"
-  },
-  {
-    title: "Emergency Aerial Survey for Drought Assessment",
-    buyer: "USAID",
-    disaster_type: "Drought",
-    region: "Kenya",
-    deadline: "2025-09-20",
-    link: "https://sam.gov/example"
-  },
-  {
-    title: "Aerial Firefighting Support",
-    buyer: "Ministry of Interior, Greece",
-    disaster_type: "Snowmelt",
-    region: "Greece",
-    deadline: "2025-09-15",
-    link: "https://ted.europa.eu/example"
-  }
-];
+const parser = new Parser();
 
 app.get("/", (req, res) => {
   res.send("🌍 Opportunities API is running. Try /opportunities");
 });
 
-app.get("/opportunities", (req, res) => {
-  res.json(opportunities);
+app.get("/opportunities", async (req, res) => {
+  try {
+    // TED EU tenders RSS feed
+    const feed = await parser.parseURL("https://ted.europa.eu/TED/rss/en/RSS.xml");
+
+    // Take first 5 opportunities and clean up fields
+    const results = feed.items.slice(0, 5).map(item => ({
+      title: item.title || "Untitled",
+      buyer: item.creator || "N/A",
+      disaster_type: "Procurement", // TED doesn’t classify disasters
+      region: item.title?.match(/-\s([^,]+)/)?.[1] || "EU",
+      deadline: item.pubDate || "N/A",
+      link: item.link
+    }));
+
+    res.json(results);
+  } catch (err) {
+    console.error("EU TED fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch live EU opportunities" });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
