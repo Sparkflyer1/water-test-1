@@ -1,50 +1,42 @@
 const express = require("express");
 const cors = require("cors");
-const fetch = require("node-fetch");
+const Parser = require("rss-parser");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
-app.post("/opportunities", async (req, res) => {
-  const { cpvCodes, keyword, places, size = 10 } = req.body;
+const parser = new Parser();
 
-  const payload = {
-    searchScope: "ACTIVE",
-    cpvCodes: cpvCodes || [],
-    text: keyword || "",
-    language: "EN",
-    size,
-    places
-  };
+// Root route just to confirm API is live
+app.get("/", (req, res) => {
+  res.send("🌍 Opportunities API is running. Use /opportunities to fetch live data.");
+});
 
+// Fetch live opportunities from TED RSS (filtering for aerial)
+app.get("/opportunities", async (req, res) => {
   try {
-    const response = await fetch("https://api.ted.europa.eu/v3/notices/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    // RSS feed from TED (CPV 60441000 = air transport services)
+    const url = "https://ted.europa.eu/udl?uri=TED:NOTICE:RSS&filter=60441000&scope=ACTIVE";
 
-    if (!response.ok) throw new Error(`TED API returned ${response.status}`);
+    const feed = await parser.parseURL(url);
 
-    const data = await response.json();
-    if (!data.notices) return res.json([]);
-
-    const results = data.notices.map(n => ({
-      title: n.title,
-      buyer: (n.contractingAuthorities?.[0]?.name) ?? "N/A",
-      cpv: (n.cpvCodes?.[0]?.[0]?.description) ?? "N/A",
-      region: (n.placesOfPerformance?.[0]?.description) ?? "N/A",
-      deadline: n.deadlineDate || n.publicationDate || "N/A",
-      link: n.links?.canonical ?? ""
+    // Parse items into a cleaner JSON structure
+    const items = feed.items.map((item) => ({
+      title: item.title || "",
+      link: item.link || "",
+      pubDate: item.pubDate || "",
+      description: item.contentSnippet || "",
     }));
 
-    res.json(results);
+    res.json(items);
   } catch (err) {
-    console.error("TED API error:", err);
-    res.status(500).json({ error: "Failed to fetch TED opportunities" });
+    console.error("Error fetching TED RSS:", err.message);
+    res.status(500).json({ error: "Failed to fetch live EU opportunities" });
   }
 });
 
+// Render sets PORT automatically
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Server running at https://water-test-1-3m8r.onrender.com (port ${PORT})`);
+});
