@@ -68,3 +68,30 @@ app.get("/opportunities", async (req, res) => {
     for (const url of FALLBACK_FEEDS) {
       try {
         const items = await tryFeed(url);
+        results.push(...items);
+        if (results.length > 0) break;
+      } catch (e) {
+        console.warn("Fallback feed failed:", url, e?.message || e);
+      }
+    }
+  }
+
+  // 3) Filter if q is provided
+  let filtered = results;
+  if (q) {
+    filtered = results.filter((it) => {
+      const hay = (it.title + " " + it.description).toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  if (filtered.length === 0) {
+    // Return 200 with empty array so Squarespace never sees an "error"
+    return res.json([]);
+  }
+
+  res.json(filtered);
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on :${PORT}`));
