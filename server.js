@@ -30,24 +30,19 @@ app.get("/opportunities", async (req, res) => {
   try {
     const q = (req.query.q || "").toString().trim().toLowerCase();
 
-    // Fetch & parse the RSS
     const feed = await parser.parseURL(FEED_URL);
 
-    // Map to a consistent, Squarespace-friendly shape
-    let items = (feed.items || []).map((it) => {
-      return {
-        title: it.title || "",
-        description: (it.contentSnippet || it.content || "").replace(/\s+/g, " ").trim(),
-        buyer: "Aviation Week",
-        disaster_type: "Aviation",
-        region: "",
-        deadline: "",
-        source: "Aviation Week – Source 1091",
-        link: it.link || ""
-      };
-    });
+    let items = (feed.items || []).map((it) => ({
+      title: it.title || "",
+      description: (it.contentSnippet || it.content || "").replace(/\s+/g, " ").trim(),
+      buyer: "Aviation Week",
+      disaster_type: "Aviation",
+      region: "",
+      deadline: "",
+      source: "Aviation Week – Source 1091",
+      link: it.link || ""
+    }));
 
-    // Optional keyword filter (e.g., ?q=modified%20aircraft OR ?q=aerial)
     if (q) {
       items = items.filter((it) => {
         const hay = (it.title + " " + it.description).toLowerCase();
@@ -58,4 +53,9 @@ app.get("/opportunities", async (req, res) => {
     res.json(items);
   } catch (e) {
     console.error("RSS fetch/parse failed:", e?.message || e);
-    res.status(502).json({ error: "Failed to fetch Aviation
+    res.status(502).json({ error: "Failed to fetch Aviation Week aviation feed" });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on :${PORT}`));
