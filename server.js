@@ -1,35 +1,48 @@
 const express = require("express");
 const cors = require("cors");
-const Parser = require("rss-parser");
+const fetch = require("node-fetch");
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
-const parser = new Parser();
+app.post("/opportunities", async (req, res) => {
+  const { cpvCodes, keyword, places, size = 10 } = req.body;
 
-app.get("/", (req, res) => {
-  res.send("🌍 Opportunities API is running. Try /opportunities");
-});
+  const payload = {
+    searchScope: "ACTIVE",
+    cpvCodes: cpvCodes || [],
+    text: keyword || "",
+    language: "EN",
+    size,
+    places
+  };
 
-app.get("/opportunities", async (req, res) => {
   try {
-    // TED EU tenders RSS feed
-    const feed = await parser.parseURL("https://ted.europa.eu/TED/rss/en/RSS.xml");
+    const response = await fetch("https://api.ted.europa.eu/v3/notices/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-    // Take first 5 opportunities and clean up fields
-    const results = feed.items.slice(0, 5).map(item => ({
-      title: item.title || "Untitled",
-      buyer: item.creator || "N/A",
-      disaster_type: "Procurement", // TED doesn’t classify disasters
-      region: item.title?.match(/-\s([^,]+)/)?.[1] || "EU",
-      deadline: item.pubDate || "N/A",
-      link: item.link
+    if (!response.ok) throw new Error(`TED API returned ${response.status}`);
+
+    const data = await response.json();
+    if (!data.notices) return res.json([]);
+
+    const results = data.notices.map(n => ({
+      title: n.title,
+      buyer: (n.contractingAuthorities?.[0]?.name) ?? "N/A",
+      cpv: (n.cpvCodes?.[0]?.[0]?.description) ?? "N/A",
+      region: (n.placesOfPerformance?.[0]?.description) ?? "N/A",
+      deadline: n.deadlineDate || n.publicationDate || "N/A",
+      link: n.links?.canonical ?? ""
     }));
 
     res.json(results);
   } catch (err) {
-    console.error("EU TED fetch error:", err);
-    res.status(500).json({ error: "Failed to fetch live EU opportunities" });
+    console.error("TED API error:", err);
+    res.status(500).json({ error: "Failed to fetch TED opportunities" });
   }
 });
 
