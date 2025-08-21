@@ -1,17 +1,18 @@
 {
-  "name": "aviation-opportunities-api",
+  "name": "opportunities-api",
   "version": "1.0.0",
-  "description": "Simple Express API to serve aviation opportunities from Aviation Week RSS feed",
+  "description": "Aviation opportunities feed proxy",
   "main": "server.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node server.js"
   },
-  "dependencies": {
-    "express": "^4.19.2",
-    "cors": "^2.8.5",
-    "rss-parser": "^3.13.0"
-  },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "rss-parser": "^3.13.0"
   }
 }
